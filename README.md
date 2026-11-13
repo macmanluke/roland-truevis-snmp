@@ -158,6 +158,7 @@ Field 01 is four bytes, `b0 b1 b2 b3`.
 
 | Bit | Meaning |
 |---|---|
+| `0x80` | **Soft powered off** (seen together with `0x40`: `C0`) |
 | `0x40` | Media not set (lever up / not loaded) |
 | `0x20` | Ready |
 | `0x10` | Printing (also briefly while feeding after a cut) |
@@ -198,10 +199,12 @@ Field 01 is four bytes, `b0 b1 b2 b3`.
 | `0080C000` | Head cleaning |
 | `00808000` | Other panel maintenance |
 | `20080000` | Asleep |
+| `C0008000` | Soft powered off (power button). Heaters off, media width 0, SNMP still answers |
 
 #### Suggested decoding order
 
 ```
+if b0 & 0x80            → powered off (soft off)
 if b1 & 0x08            → asleep
 if b2 & 0x40            → cleaning
 if b0 == 0x00           → maintenance
@@ -227,6 +230,9 @@ The panel already says "Ready" while the heaters are warming up, so a
   sleep, and back to `11` on waking.
 - The tested printer went to sleep after **30 minutes** idle and kept answering
   SNMP while asleep.
+- When **soft powered off** with the power button, it also keeps answering
+  SNMP. It reports state `C0008000` (b0 `0x80` + media not set), field 09
+  `00`, media width `000`, and ink levels as normal.
 
 ### Media width (field 07)
 
@@ -260,8 +266,8 @@ capture any of them:
 
 - One SNMP GET takes a few milliseconds. Polling every few seconds is fine,
   but cache the result if many screens show it.
-- If the printer doesn't answer, it's switched off or off the network. Sleep
-  still answers.
+- If the printer doesn't answer, it's switched off at the mains or off the
+  network. Sleep and soft power-off still answer.
 - Ink use can be estimated from changes in field 06, and print/cut time from
   state changes.
 

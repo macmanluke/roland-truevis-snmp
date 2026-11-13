@@ -118,6 +118,8 @@ def _chunks(value, size):
 
 
 def decode_state(b0, b1, b2, heaters_on):
+    if b0 & 0x80:
+        return "off"
     if b1 & 0x08:
         return "asleep"
     if b2 & 0x40:
@@ -140,6 +142,7 @@ def decode_state(b0, b1, b2, heaters_on):
 
 
 STATE_LABEL = {
+    "off": "Powered off",
     "asleep": "Asleep",
     "cleaning": "Head cleaning",
     "maintenance": "Maintenance",

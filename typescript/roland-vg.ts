@@ -25,6 +25,7 @@ export const VG3_CARTRIDGE_ORDER: InkColour[] = ["M", "M", "C", "C", "Y", "Y", "
 export const LOW_INK_ML = 50;
 
 export type RolandState =
+  | "off"
   | "asleep"
   | "cleaning"
   | "maintenance"
@@ -96,6 +97,7 @@ function hexChunks(value: string | undefined, size: number): number[] {
 }
 
 export function decodeState(b0: number, b1: number, b2: number, heatersOn: boolean): RolandState {
+  if (b0 & 0x80) return "off"; // soft powered off
   if (b1 & 0x08) return "asleep";
   if (b2 & 0x40) return "cleaning";
   if (b0 === 0x00) return "maintenance";
