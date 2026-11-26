@@ -173,10 +173,13 @@ def decode(raw):
 
     inks = []
     for i, colour in enumerate(CARTRIDGE_ORDER):
-        pouch = {"1": "ok", "2": "removed"}.get(pouches[i] if i < len(pouches) else "", "unknown")
+        # Field 04: 1 ok, 0 empty (the printer has finished this pouch), 2 removed.
+        pouch = {"1": "ok", "0": "empty", "2": "removed"}.get(pouches[i] if i < len(pouches) else "", "unknown")
         ml = remaining[i] if i < len(remaining) else None
         if pouch == "removed":
             level = "removed"
+        elif pouch == "empty":
+            level = "empty"
         elif ml is None:
             level = "unknown"
         elif ml <= 0:
@@ -231,6 +234,10 @@ def format_text(st, raw=False):
         label = f"{i['colour']}{i['slot']} "
         if i["level"] == "removed":
             label += "removed"
+        elif i["pouch"] == "empty":
+            label += "empty"
+        elif i["level"] == "empty":
+            label += f"{i['ml']} ml (nearly empty)"
         else:
             label += f"{i['ml']} ml" + ("" if i["level"] == "ok" else f" ({i['level']})")
         ink.append(label)

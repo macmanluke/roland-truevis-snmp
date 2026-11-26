@@ -44,7 +44,9 @@ export type RolandInk = {
   colour: InkColour;
   ml: number | null;
   capacityMl: number | null;
-  pouch: "ok" | "removed" | "unknown";
+  /** Field 04: `1` ok, `0` empty (the printer has finished this pouch), `2` removed. */
+  pouch: "ok" | "empty" | "removed" | "unknown";
+  /** `empty` covers both a finished pouch and 0 ml while still `ok` (nearly empty). */
   level: "ok" | "low" | "empty" | "removed" | "unknown";
 };
 
@@ -128,13 +130,16 @@ export function parseRolandDeviceId(
   const remaining = hexChunks(f.get(0x06), 4);
 
   const inks: RolandInk[] = cartridgeOrder.map((colour, i) => {
+    const code = pouches[i];
     const pouch: RolandInk["pouch"] =
-      pouches[i] === "1" ? "ok" : pouches[i] === "2" ? "removed" : "unknown";
+      code === "1" ? "ok" : code === "0" ? "empty" : code === "2" ? "removed" : "unknown";
     const ml = remaining[i] ?? null;
     const level: RolandInk["level"] =
       pouch === "removed"
         ? "removed"
-        : ml == null
+        : pouch === "empty"
+          ? "empty"
+          : ml == null
           ? "unknown"
           : ml <= 0
             ? "empty"

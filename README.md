@@ -34,7 +34,7 @@ python3 python/rolandvg.py 192.168.1.50 --watch  # print every change (2 s polli
 VG3-640  Ready
   heaters on   print 45 °C  dryer 55 °C
   media        1480 mm
-  ink   M1 500 ml  M2 256 ml  C3 219 ml  C4 409 ml  Y5 0 ml (empty)  Y6 231 ml  K7 497 ml  K8 142 ml
+  ink   M1 500 ml  M2 256 ml  C3 219 ml  C4 409 ml  Y5 0 ml (nearly empty)  Y6 231 ml  K7 497 ml  K8 142 ml
   last event   0x8242
 ```
 
@@ -114,7 +114,7 @@ Example, split into fields:
 | `01` | 8 | **State**: four bytes b0–b3, see [State](#state-field-01) |
 | `02` | 1 | Always `0` so far |
 | `03` | 32 | Ink colour per **head channel**: 8 × 4 hex, `13xx`, where xx is a colour code (`00` = yellow; see notes) |
-| `04` | 8 | **Pouch status** per cartridge slot: 8 × 1 hex. `1` = OK, `2` = pouch removed |
+| `04` | 8 | **Pouch status** per cartridge slot: 8 × 1 hex. `1` = OK, `0` = empty (ink end), `2` = pouch removed |
 | `05` | 32 | **Pouch capacity** per slot: 8 × 4 hex, ml (`01F4` = 500) |
 | `06` | 32 | **Ink remaining** per slot: 8 × 4 hex, ml |
 | `07` | 3 | **Media width**, mm. `000` = no media set |
@@ -135,15 +135,21 @@ to right**. On the tested printer in CMYK ×2 mode the slots are
 - The remaining amount (field 06) matched the panel's ink display for every
   pouch, and went down by about 1 ml per pouch during a small test print and
   by about 2 ml during a head clean.
-- A pouch close to empty reads **0 ml** while the panel still shows only a
-  low-ink warning, so treat 0 as "nearly empty" rather than "empty".
+- A pouch close to empty reads **0 ml** while its status (field 04) is still
+  `1` and the panel shows only a low-ink warning. Treat this as "nearly
+  empty": the printer is still drawing from it.
+- When the printer has used the pouch up, its status changes to **`0`**
+  (empty). Remaining stays `0` and capacity stays at the pouch size. This was
+  seen while printing: the job carried on from the colour's other pouch, and
+  the state stayed **Printing**.
 - When a pouch is pulled out, its status (field 04) changes to `2` and both its
   capacity and remaining read `0`. When it goes back in, they return to their
   previous values.
 - Each colour has two pouches, and the printer stays **Ready** with one of a
   colour's pouches removed. It only stops when both are out.
-- The panel's low-ink warning is **not** reflected in field 04, which stayed
-  `1`. Set your own low-ink threshold on the ml value.
+- The panel's low-ink warning is **not** reflected in field 04, which stays
+  `1` until the pouch is used up. Set your own low-ink threshold on the ml
+  value.
 
 Field 03 lists colours per **head channel** in a mirrored order (`02 03 01 00 00
 01 03 02` on the tested machine), **not** cartridge order. The `00` channels
@@ -257,7 +263,8 @@ These states weren't captured on the test machine. Please open an issue if you
 capture any of them:
 
 - media end / media out during a print
-- both pouches of one colour empty
+- both pouches of one colour empty (one empty pouch is status `0`, see
+  [Ink](#ink-fields-04-05-06))
 - media jam, carriage errors, other error screens
 - other VG3 models (VG3-540), other ink configurations (8-colour), the VG2 or
   SG series
